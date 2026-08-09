@@ -89,6 +89,32 @@ python compare_runs.py
 | `NO DIVERGENCE DETECTED` | Same binary, same input, same output |
 | `UNEXPLAINED DIVERGENCE — GENUINE FINDING` | Same binary, same input, different output |
 
+
+## Sample output
+
+$ python3 compare_runs.py
+
+Loaded 2 node manifests:
+
+[0aed6f6b47c5]
+kernel : Linux 6.6.122+ x86_64 GNU/Linux
+cpu_model : AMD EPYC 7B12
+output_hash: 4df37f75b1e36e336d681a1c6c55496a1e36adc09449f57e2a1fe9d65ed800f4
+
+[Prime]
+kernel : Linux 6.6.87.2-microsoft-standard-WSL2 x86_64 GNU/Linux
+cpu_model : 12th Gen Intel(R) Core(TM) i5-12450HX
+output_hash: d3995a1a95c5b609361dc44c6cf08aa40ed2abbf323fc0b75005f2f093f232bb
+
+Binary identical across all nodes: CONFIRMED
+Input identical across all nodes: CONFIRMED
+
+RESULT: UNEXPLAINED DIVERGENCE — GENUINE FINDING
+
+output 4df37f75b1e36e33... <- ['0aed6f6b47c5']
+output d3995a1a95c5b609... <- ['Prime']
+
+
 If you reach `UNEXPLAINED DIVERGENCE`, the manifests are your chain of
 custody. What you do with the divergent output files is outside the scope
 of this repository.
