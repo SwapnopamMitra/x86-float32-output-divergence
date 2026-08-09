@@ -1,0 +1,19 @@
+{
+  "node_label": "Prime",
+  "timestamp_utc": "2026-08-09T16:08:31Z",
+  "kernel": "Linux 6.6.87.2-microsoft-standard-WSL2 x86_64 GNU/Linux",
+  "cpu_model": "12th Gen Intel(R) Core(TM) i5-12450HX",
+  "cpu_flags_hash": "30b1dc55582542703bd2fa559c340863ba6780fe0104b54e828092f1897ad37c",
+  "glibc_version": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.8) 2.39",
+  "command": "./divergence_demo.sh ",
+  "binary_path": "./divergence_demo.sh",
+  "binary_sha256": "df3f1e09bf0d5101e278e263d28f05cea3103157f4deb2d1efd15168fa4155aa",
+  "input_file": "test.bin",
+  "input_sha256": "6205d7ae24ac56d379162b393dd68939d67df3dd9bd4ebe87a0a8982aa782aba",
+  "elapsed_seconds": ".175573628",
+  "result_kind": "stdout",
+  "result_file": "output_Prime.stdout",
+  "raw_output_sha256": "d3995a1a95c5b609361dc44c6cf08aa40ed2abbf323fc0b75005f2f093f232bb",
+  "stdout_file": "output_Prime.stdout",
+  "stdout_sha256": "d3995a1a95c5b609361dc44c6cf08aa40ed2abbf323fc0b75005f2f093f232bb"
+}

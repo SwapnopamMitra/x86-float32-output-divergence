@@ -1,0 +1,19 @@
+{
+  "node_label": "0aed6f6b47c5",
+  "timestamp_utc": "2026-08-09T16:08:20Z",
+  "kernel": "Linux 6.6.122+ x86_64 GNU/Linux",
+  "cpu_model": "AMD EPYC 7B12",
+  "cpu_flags_hash": "7ac668520e7b50e32abd30a510f8c6cb16aaa737725666949677df10f3fdb612",
+  "glibc_version": "ldd (Ubuntu GLIBC 2.35-0ubuntu3.13) 2.35",
+  "command": "./divergence_demo.sh ",
+  "binary_path": "./divergence_demo.sh",
+  "binary_sha256": "df3f1e09bf0d5101e278e263d28f05cea3103157f4deb2d1efd15168fa4155aa",
+  "input_file": "test.bin",
+  "input_sha256": "6205d7ae24ac56d379162b393dd68939d67df3dd9bd4ebe87a0a8982aa782aba",
+  "elapsed_seconds": ".069270734",
+  "result_kind": "stdout",
+  "result_file": "output_0aed6f6b47c5.stdout",
+  "raw_output_sha256": "4df37f75b1e36e336d681a1c6c55496a1e36adc09449f57e2a1fe9d65ed800f4",
+  "stdout_file": "output_0aed6f6b47c5.stdout",
+  "stdout_sha256": "4df37f75b1e36e336d681a1c6c55496a1e36adc09449f57e2a1fe9d65ed800f4"
+}
