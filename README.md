@@ -16,8 +16,8 @@ divergence findings on real hardware.
 The manifests record two independent findings:
 
 **CPU finding — hardware-dependent divergence.**
-Five distinct CPU configurations, same binary hash, same input hash,
-**five different output hashes**.
+Six distinct CPU configurations, same binary hash, same input hash,
+**six different output hashes**.
 
 **GPU finding — path-dependent divergence.**
 Two GPU architectures (Tesla T4 sm_75, RTX 3050 sm_86), six different
@@ -36,6 +36,10 @@ canonicalization method, any external tool, or any resolution logic.
 If canonical hashes or tool-specific outputs appear in other published
 material, that is where they belong — not here.
 
+No canonicalization logic, no SPCMP reference, no resolution method
+appears in this repository. If canonical hashes appear in other
+material, they are not derived from anything here.
+
 The GPU harness uses only standard CUDA intrinsics and compiler flags.
 It does not depend on any particular SDK version, driver, or architecture
 beyond what the Makefile declares.
@@ -50,16 +54,16 @@ divergence-verifier/
 ├── LICENSE
 ├── capture_run.sh                  — fingerprints binary + input + output, writes manifest
 ├── compare_runs.py                 — collects CPU manifests, classifies the result
-├── test.bin                        — CPU divergence corpus (9000 bytes)
+├── test.bin                        — CPU divergence corpus
 ├── divergence_demo.sh              — CPU divergence trigger
 ├── run_divergence_test.sh          — one-command CPU runner
 │
-├── manifests/                      — CPU manifests
-│   ├── manifest_Prime.json
-│   ├── manifest_c2e68d2ae4f6.json
-│   ├── manifest_6e258a114c61.json
-│   ├── manifest_project40c8f81744b8444da370e811d81e6c86.json
-│   └── manifest_puddi.json
+├── manifest_0e4e583760c2.json      — CPU manifests (root directory)
+├── manifest_6e258a114c61.json
+├── manifest_Prime.json
+├── manifest_c2e68d2ae4f6.json
+├── manifest_project40c8f81744b8444da370e811d81e6c86.json
+├── manifest_second_pc.json
 │
 └── cuda/                           — GPU divergence harness
     ├── Makefile                    — fat binary build (sm_75 + sm_86)
@@ -87,6 +91,10 @@ divergence-verifier/
         └── manifest_gpu_red_atomic_t4.json
 ```
 
+Note: CPU manifests sit at the repository root, not in a subdirectory.
+`compare_runs.py` scans the current working directory for
+`manifest_*.json`, so the CPU comparison is run from the repository root.
+
 ---
 
 ## Scope
@@ -105,19 +113,20 @@ separately.
 
 ## CPU finding
 
-Five nodes. Five different CPUs. Same binary, same input.
+Six nodes. Six different CPU configurations. Same binary, same input.
 
 | Node | CPU | glibc | Output hash |
 |------|-----|-------|-------------|
 | Prime | Intel i5-12450HX | 2.39 | `b266807160a9ee69...` |
-| c2e68d2ae4f6 | AMD EPYC 7B13 | 2.35 | `44b36c0f3a01cc59...` |
+| 0e4e583760c2 | Intel Xeon @ 2.20GHz | 2.39 | `8f172ee242809dbf...` |
 | 6e258a114c61 | Intel Xeon @ 2.00GHz | — | `7989a6b20cc566cd...` |
+| c2e68d2ae4f6 | AMD EPYC 7B13 | 2.35 | `44b36c0f3a01cc59...` |
 | project40c8... | AMD EPYC 7B13 | — | `a1b49047410b2620...` |
-| puddi | Intel i5-1255U | — | `689c2e49eb09ec8b...` |
+| second_pc | Intel i5-1255U | — | `689c2e49eb09ec8b...` |
 
-**Binary hash: identical across all five nodes** (`71cba87046d06afb...`).
-**Input hash: identical across all five nodes** (`e851cab68f6e2350...`).
-**Output hash: five distinct values.**
+**Binary hash: identical across all six nodes** (`71cba87046d06afb...`).
+**Input hash: identical across all six nodes** (`e851cab68f6e2350...`).
+**Output hash: six distinct values.**
 
 ---
 
@@ -170,20 +179,31 @@ Copy the file. Do not regenerate it.
 
 ### 3. Capture a run on each node
 
-On every node, run:
+From the repository root, on every node, run:
+
+```bash
+./run_divergence_test.sh
+```
+
+or equivalently:
 
 ```bash
 ./capture_run.sh <node_label> test.bin --artifact float_output.bin -- ./divergence_demo.sh
 ```
 
-This produces `manifest_<node_label>.json`. Collect all manifests into
-`manifests/`.
+This produces `manifest_<node_label>.json` in the repository root.
 
 ### 4. Compare
+
+From the repository root:
 
 ```bash
 python3 compare_runs.py
 ```
+
+`compare_runs.py` scans the current directory for `manifest_*.json`.
+It does not look in subdirectories. Run it from the repository root
+after collecting all manifests there.
 
 | Result | Meaning |
 |--------|---------|
@@ -224,10 +244,11 @@ all six kernels and writes manifests to `cuda/manifests/`.
 
 ### 3. Compare across machines
 
-Copy all `manifest_gpu_*.json` files into one directory and run:
+Copy all `manifest_gpu_*.json` files into `cuda/manifests/` and run:
 
 ```bash
-python3 compare_cuda_runs.py
+cd cuda/manifests
+python3 ../compare_cuda_runs.py
 ```
 
 The script groups manifests by kernel, verifies binary hash identity
@@ -240,7 +261,17 @@ across machines, and reports whether output hashes diverge.
 ```
 $ python3 compare_runs.py
 
-Loaded 5 node manifests:
+Loaded 6 node manifests:
+
+  [0e4e583760c2]
+    kernel      : Linux 6.6.122+ x86_64 GNU/Linux
+    cpu_model   : Intel(R) Xeon(R) CPU @ 2.20GHz
+    output_hash : 8f172ee242809dbf...
+
+  [6e258a114c61]
+    kernel      : Linux 6.6.122+ x86_64 GNU/Linux
+    cpu_model   : Intel(R) Xeon(R) CPU @ 2.00GHz
+    output_hash : 7989a6b20cc566cd...
 
   [Prime]
     kernel      : Linux 6.6.87.2-microsoft-standard-WSL2 x86_64 GNU/Linux
@@ -252,17 +283,12 @@ Loaded 5 node manifests:
     cpu_model   : AMD EPYC 7B13
     output_hash : 44b36c0f3a01cc59...
 
-  [6e258a114c61]
-    kernel      : Linux 6.6.122+ x86_64 GNU/Linux
-    cpu_model   : Intel(R) Xeon(R) CPU @ 2.00GHz
-    output_hash : 7989a6b20cc566cd...
-
   [project40c8f81744b8444da370e811d81e6c86]
     kernel      : Linux 6.17.0-1022-gcp x86_64 GNU/Linux
     cpu_model   : AMD EPYC 7B13
     output_hash : a1b49047410b2620...
 
-  [puddi]
+  [second_pc]
     kernel      : Linux 4.4.0-26100-Microsoft x86_64 GNU/Linux
     cpu_model   : 12th Gen Intel(R) Core(TM) i7-1255U
     output_hash : 689c2e49eb09ec8b...
@@ -271,12 +297,15 @@ Binary identical: CONFIRMED
 Input identical:  CONFIRMED
 
 RESULT: UNEXPLAINED DIVERGENCE — GENUINE FINDING
+    8f172ee242809dbf...  <- ['0e4e583760c2']
     7989a6b20cc566cd...  <- ['6e258a114c61']
     b266807160a9ee69...  <- ['Prime']
     44b36c0f3a01cc59...  <- ['c2e68d2ae4f6']
     a1b49047410b2620...  <- ['project40c8f81744b8444da370e811d81e6c86']
-    689c2e49eb09ec8b...  <- ['puddi']
+    689c2e49eb09ec8b...  <- ['second_pc']
 ```
+
+---
 
 ## Sample output (GPU)
 
@@ -286,61 +315,47 @@ $ python3 compare_cuda_runs.py
 Loaded 12 GPU manifests:
 
   [Prime_gpu_fma_off]
-    gpu        : NVIDIA GeForce RTX 3050 6GB Laptop GPU
-    cuda       : 13.0
-    nvcc_flags : -O2 fat --fmad=false
-    input_hash : e851cab68f6e2350...
-    output_hash: c0d12da384ac30a6...
+    gpu          : NVIDIA GeForce RTX 3050 6GB Laptop GPU
+    compute_cap  : 8.6
+    kernel       : fma_off
+    binary_sha   : 0cd5a05bc5de06e1...
+    output_hash  : c0d12da384ac30a6...
 
   [d794f130e459_gpu_fma_off]
-    gpu        : Tesla T4
-    cuda       : 12.8
-    nvcc_flags : -O2 fat --fmad=false
-    input_hash : e851cab68f6e2350...
-    output_hash: c0d12da384ac30a6...
-
-  [Prime_gpu_fma_on]
-    gpu        : NVIDIA GeForce RTX 3050 6GB Laptop GPU
-    cuda       : 13.0
-    nvcc_flags : -O2 fat -DUSE_FMA
-    input_hash : e851cab68f6e2350...
-    output_hash: 9abc1b84d3e4c0b3...
-
-  [d794f130e459_gpu_fma_on]
-    gpu        : Tesla T4
-    cuda       : 12.8
-    nvcc_flags : -O2 fat -DUSE_FMA
-    input_hash : e851cab68f6e2350...
-    output_hash: 9abc1b84d3e4c0b3...
+    gpu          : Tesla T4
+    compute_cap  : 7.5
+    kernel       : fma_off
+    binary_sha   : 0cd5a05bc5de06e1...
+    output_hash  : c0d12da384ac30a6...
 
   ... (12 manifests total)
 
 Input identical: CONFIRMED
-Binary identical per kernel: CONFIRMED
 
-Cross-kernel divergence on each machine: 4 distinct outputs across 6 kernels.
-Same-kernel identity across machines: CONFIRMED for all 6 kernels.
-
-Note: GPU output is deterministic across architectures for a fixed kernel.
-Divergence is between execution paths, not between GPUs.
+RESULT: CUDA DIVERGENCE — GENUINE FINDING
+Same input, different compile flags -> different output.
 ```
 
 ---
 
 ## Design constraints
 
-`capture_run.sh` hashes the actual executable on disk (not its name),
-hashes the input file before the run, clears any stale artifact before
-executing, and writes a timestamped JSON manifest. It does not modify or
-canonicalize output.
+`capture_run.sh` hashes the executable on disk, hashes the input file
+before the run, clears any stale artifact before executing, and writes
+a timestamped JSON manifest. It does not modify or canonicalize output.
 
-`compare_runs.py` enforces that all nodes ran the same capture mode
-before comparing. Mixed-mode comparisons (stdout on one node, artifact
-on another) are rejected as invalid.
+`compare_runs.py` scans the current working directory for
+`manifest_*.json`. Run it from the repository root after collecting
+all CPU manifests there. It enforces that all nodes ran the same
+capture mode before comparing. Mixed-mode comparisons (stdout on one
+node, artifact on another) are rejected as invalid.
 
-`test.bin` is a committed 9000-byte float32 corpus. It is the input
-for all CPU runs. Its SHA256 is recorded above; every manifest carries
-the same `input_sha256` value.
+`test.bin` is the committed float32 corpus. It is the input for all
+CPU runs. Its SHA256 is recorded above; every manifest carries the
+same `input_sha256` value.
+
+`divergence_demo.sh` reads `test.bin` and writes `float_output.bin`.
+It does not regenerate the corpus.
 
 `cuda/Makefile` builds fat binaries for cross-architecture testing.
 The same binary file runs on both Turing and Ampere GPUs, so the
@@ -353,13 +368,13 @@ verifies binary hash identity before comparing outputs.
 
 ## Adding nodes
 
-**CPU:** Copy `test.bin` to the new node. Run `capture_run.sh` with the
-same command shown above. Drop the resulting manifest into `manifests/`.
-Re-run `compare_runs.py`.
+**CPU:** Copy `test.bin` to the new node. Run `run_divergence_test.sh`
+from the repository root. The resulting `manifest_<node_label>.json`
+lands in the repository root. Re-run `compare_runs.py` from the root.
 
-**GPU:** Run `run_cuda_divergence_test.sh` on the new GPU machine. Copy
-the resulting `cuda/manifests/manifest_gpu_*.json` into the same
-directory as the other GPU manifests. Re-run `compare_cuda_runs.py`.
+**GPU:** Run `run_cuda_divergence_test.sh` on the new GPU machine.
+Copy the resulting `cuda/manifests/manifest_gpu_*.json` into
+`cuda/manifests/`. Re-run `compare_cuda_runs.py` from `cuda/manifests/`.
 
 Hardware diversity is the point. Different CPU families (x86 vs ARM),
 different kernels, different libc versions. The `cpu_flags_hash` field
