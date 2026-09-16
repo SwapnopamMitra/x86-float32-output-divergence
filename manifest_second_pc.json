@@ -1,5 +1,5 @@
 {
-  "node_label": "puddi",
+  "node_label": "second_pc",
   "timestamp_utc": "2026-09-02T16:00:35Z",
   "kernel": "Linux 4.4.0-26100-Microsoft x86_64 GNU/Linux",
   "cpu_model": "12th Gen Intel(R) Core(TM) i7-1255U",
@@ -12,8 +12,8 @@
   "input_sha256": "e851cab68f6e23507fc0a4f0ef2df82c86e288289a59e0f237570d3a9f469c19",
   "elapsed_seconds": ".336689000",
   "result_kind": "stdout",
-  "result_file": "output_puddi.stdout",
+  "result_file": "output_second_pc.stdout",
   "raw_output_sha256": "689c2e49eb09ec8b1a15740c0e54f20a1e7ecb712e90162ae1f5e893706a5df4",
-  "stdout_file": "output_puddi.stdout",
+  "stdout_file": "output_second_pc.stdout",
   "stdout_sha256": "689c2e49eb09ec8b1a15740c0e54f20a1e7ecb712e90162ae1f5e893706a5df4"
 }
