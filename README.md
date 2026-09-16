@@ -47,13 +47,12 @@ beyond what the Makefile declares.
 ```
 divergence-verifier/
 ├── README.md
+├── LICENSE
 ├── capture_run.sh                  — fingerprints binary + input + output, writes manifest
 ├── compare_runs.py                 — collects CPU manifests, classifies the result
-├── make_corpus.py                  — generates the float32 test corpus
-├── divergence_demo_guaranteed.sh   — CPU divergence trigger (math library path)
+├── test.bin                        — CPU divergence corpus (9000 bytes)
+├── divergence_demo.sh              — CPU divergence trigger
 ├── run_divergence_test.sh          — one-command CPU runner
-├── reference_canonicalizer.py      — independent reference implementation (bit-level)
-├── exhaustive_check.c              — exhaustive check over all 2^32 float32 patterns
 │
 ├── manifests/                      — CPU manifests
 │   ├── manifest_Prime.json
@@ -72,6 +71,7 @@ divergence-verifier/
     ├── compare_cuda_runs.py
     ├── run_cuda_divergence_test.sh
     ├── build_fat_bundle.sh         — bundle for cross-machine transfer
+    ├── test.bin                    — GPU divergence corpus
     └── manifests/
         ├── manifest_gpu_fma_on_rtx3050.json
         ├── manifest_gpu_fma_on_t4.json
@@ -89,6 +89,20 @@ divergence-verifier/
 
 ---
 
+## Scope
+
+This repository is an independent verifier. It records what happened
+and lets anyone reproduce the conditions. It does not diagnose the
+cause, propose a fix, or depend on any particular hardware, driver,
+or library version beyond what each manifest records.
+
+The CPU manifests record a hardware-dependent divergence finding.
+The GPU manifests record a path-dependent divergence finding. These
+are separate findings with separate causes and should be cited
+separately.
+
+---
+
 ## CPU finding
 
 Five nodes. Five different CPUs. Same binary, same input.
@@ -101,8 +115,8 @@ Five nodes. Five different CPUs. Same binary, same input.
 | project40c8... | AMD EPYC 7B13 | — | `a1b49047410b2620...` |
 | puddi | Intel i5-1255U | — | `689c2e49eb09ec8b...` |
 
-**Binary hash: identical across all five nodes.**
-**Input hash: identical across all five nodes.**
+**Binary hash: identical across all five nodes** (`71cba87046d06afb...`).
+**Input hash: identical across all five nodes** (`e851cab68f6e2350...`).
 **Output hash: five distinct values.**
 
 ---
@@ -120,46 +134,55 @@ Two GPUs. Six kernels. Same binary per kernel, same input.
 | `red_tree` | `fat -DTREE_REDUCTION` | `a2c70538...` | `a2c70538...` |
 | `red_atomic` | `fat -DATOMIC_REDUCTION` | `a2c70538...` | `a2c70538...` |
 
-**Input hash: identical across all 12 manifests (`e851cab68f6e2350...`).**
 **Same kernel across two GPU architectures: identical output.**
 **Different kernels on the same GPU: different output.**
 
+Note: `ftz_on` / `ftz_off` compare the fast intrinsic `__expf` against
+the accurate library function `expf`. These differ in both polynomial
+approximation and FTZ behavior; the label reflects the fast-math path,
+not an isolated FTZ toggle.
+
 The divergence source on GPU is the execution path (FMA vs non-FMA,
-fast intrinsic vs accurate library, reduction order), not the hardware.
+fast intrinsic vs accurate library), not the hardware.
 
 ---
 
 ## Reproducing the CPU test
 
-### 1. Generate the corpus
+### 1. Verify the corpus
+
+The corpus is committed to the repository as `test.bin`. Its SHA256 is:
+
+    e851cab68f6e23507fc0a4f0ef2df82c86e288289a59e0f237570d3a9f469c19
+
+Verify:
 
 ```bash
-python make_corpus.py
+sha256sum test.bin
 ```
 
-The corpus seed is fixed. If your `corpus.bin` hash differs from the
-published one, your Python or `struct` behavior is the issue — not
-the hardware.
+If the hash differs, do not proceed. The finding depends on every node
+using a byte-identical input.
 
-### 2. Capture a run on each node
+### 2. Copy test.bin to each node
 
-On every node you want to test, run identically:
+Copy the file. Do not regenerate it.
+
+### 3. Capture a run on each node
+
+On every node, run:
 
 ```bash
-# if the binary writes its result to a file:
-./capture_run.sh <node_label> corpus.bin --artifact <result_file> -- <command>
-
-# if the binary writes its result to stdout:
-./capture_run.sh <node_label> corpus.bin -- <command>
+./capture_run.sh <node_label> test.bin --artifact float_output.bin -- ./divergence_demo.sh
 ```
 
 This produces `manifest_<node_label>.json`. Collect all manifests into
-one directory.
+`manifests/`.
 
-### 3. Compare
+### 4. Compare
 
 ```bash
-python compare_runs.py
+python3 compare_runs.py
 ```
 
 | Result | Meaning |
@@ -219,11 +242,6 @@ $ python3 compare_runs.py
 
 Loaded 5 node manifests:
 
-  [6e258a114c61]
-    kernel      : Linux 6.6.122+ x86_64 GNU/Linux
-    cpu_model   : Intel(R) Xeon(R) CPU @ 2.00GHz
-    output_hash : 7989a6b20cc566cd...
-
   [Prime]
     kernel      : Linux 6.6.87.2-microsoft-standard-WSL2 x86_64 GNU/Linux
     cpu_model   : 12th Gen Intel(R) Core(TM) i5-12450HX
@@ -233,6 +251,11 @@ Loaded 5 node manifests:
     kernel      : Linux 6.6.122+ x86_64 GNU/Linux
     cpu_model   : AMD EPYC 7B13
     output_hash : 44b36c0f3a01cc59...
+
+  [6e258a114c61]
+    kernel      : Linux 6.6.122+ x86_64 GNU/Linux
+    cpu_model   : Intel(R) Xeon(R) CPU @ 2.00GHz
+    output_hash : 7989a6b20cc566cd...
 
   [project40c8f81744b8444da370e811d81e6c86]
     kernel      : Linux 6.17.0-1022-gcp x86_64 GNU/Linux
@@ -293,16 +316,13 @@ Loaded 12 GPU manifests:
   ... (12 manifests total)
 
 Input identical: CONFIRMED
+Binary identical per kernel: CONFIRMED
 
-RESULT: CUDA DIVERGENCE — GENUINE FINDING
-Same input, different compile flags -> different output.
+Cross-kernel divergence on each machine: 4 distinct outputs across 6 kernels.
+Same-kernel identity across machines: CONFIRMED for all 6 kernels.
 
-    -O2 fat --fmad=false       output=c0d12da384ac30a6...
-    -O2 fat -DUSE_FMA          output=9abc1b84d3e4c0b3...
-    -O2 fat                    output=0accc3bb0f4add72...
-    -O2 fat -DUSE_FAST         output=8a792baa0bd1e12f...
-    fat -DATOMIC_REDUCTION     output=a2c70538651a7e92...
-    fat -DTREE_REDUCTION       output=a2c70538651a7e92...
+Note: GPU output is deterministic across architectures for a fixed kernel.
+Divergence is between execution paths, not between GPUs.
 ```
 
 ---
@@ -318,9 +338,9 @@ canonicalize output.
 before comparing. Mixed-mode comparisons (stdout on one node, artifact
 on another) are rejected as invalid.
 
-`make_corpus.py` covers the standard float32 edge-case space:
-signaling and quiet NaN variants, signed zero, subnormals, infinities,
-boundary normals, and a random sample at a fixed seed.
+`test.bin` is a committed 9000-byte float32 corpus. It is the input
+for all CPU runs. Its SHA256 is recorded above; every manifest carries
+the same `input_sha256` value.
 
 `cuda/Makefile` builds fat binaries for cross-architecture testing.
 The same binary file runs on both Turing and Ampere GPUs, so the
@@ -333,8 +353,9 @@ verifies binary hash identity before comparing outputs.
 
 ## Adding nodes
 
-**CPU:** Run `capture_run.sh` on the new node. Drop the manifest into
-`manifests/`. Re-run `compare_runs.py`.
+**CPU:** Copy `test.bin` to the new node. Run `capture_run.sh` with the
+same command shown above. Drop the resulting manifest into `manifests/`.
+Re-run `compare_runs.py`.
 
 **GPU:** Run `run_cuda_divergence_test.sh` on the new GPU machine. Copy
 the resulting `cuda/manifests/manifest_gpu_*.json` into the same
@@ -348,6 +369,5 @@ in each manifest records the full CPU flags word for post-hoc analysis.
 
 ## License
 
-MIT. The harness only. The test corpus (`corpus.bin`) is
-deterministically generated by `make_corpus.py` and carries no separate
-rights.
+MIT. The harness only. The test corpus (`test.bin`) is committed as
+data and carries no separate rights.
