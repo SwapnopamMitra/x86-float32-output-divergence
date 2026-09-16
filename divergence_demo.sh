@@ -1,5 +1,5 @@
 #!/bin/bash
-# divergence_demo.sh - Guaranteed divergence
+# divergence_demo_guaranteed.sh - Guaranteed divergence
 
 echo "=== Divergence Capture (Guaranteed) ==="
 echo "Node: $(hostname)"
